@@ -66,6 +66,15 @@ type SavedProgress = {
   lastChallenge?: string;
 };
 
+type RunResult = {
+  status?: string;
+  stdout?: string;
+  stderr?: string;
+  compileOutput?: string;
+  time?: string | null;
+  error?: string;
+};
+
 type ModelContext = {
   registerTool: (
     tool: {
@@ -296,7 +305,7 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sourceCode: code, stdin }),
       });
-      const result = await response.json();
+      const result = (await response.json()) as RunResult;
       if (!response.ok) throw new Error(result.error || "The runner could not complete this attempt.");
 
       const output = [
