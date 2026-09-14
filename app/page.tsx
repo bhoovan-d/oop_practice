@@ -172,6 +172,7 @@ export default function Home() {
     await navigator.clipboard.writeText([
       `${challenge.title} (${challenge.difficulty})`, `Topic: ${challenge.concept}`, "", challenge.brief, "", "Requirements:",
       ...challenge.requirements.map((item) => `- ${item}`), "", `${challenge.inputLabel}:`, challenge.sampleInput,
+      "", "Implementation steps:", ...challenge.implementationSteps.map((step, index) => `${index + 1}. ${step.title}: ${step.detail}`),
       "", `${challenge.outputLabel}:`, challenge.sampleOutput,
     ].join("\n"));
     setCopied(true); window.setTimeout(() => setCopied(false), 1800);
@@ -254,8 +255,13 @@ export default function Home() {
                 <div className="space-y-7 p-5 md:p-7">
                   {mode === "learn" ? <div className="flex items-start gap-3 rounded-xl border border-cyan-100 bg-cyan-50/70 p-4"><Sparkles className="mt-0.5 size-4 shrink-0 text-cyan-700" /><div><p className="text-sm font-semibold text-cyan-950">Concept to practise</p><p className="mt-1 text-sm leading-6 text-cyan-900/70">{challenge.principle}</p></div></div> : <div className="flex items-start gap-3 rounded-xl border border-orange-100 bg-orange-50 p-4"><Clock3 className="mt-0.5 size-4 shrink-0 text-orange-700" /><div><p className="text-sm font-semibold text-orange-950">Exam attempt</p><p className="mt-1 text-sm leading-6 text-orange-900/70">Work in your own IDE without hints. Return here when finished and paste your solution below.</p></div></div>}
 
-                  <section><h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.08em] text-slate-400"><ListChecks className="size-4" /> What your program must accomplish</h2>
-                    <ul className="mt-4 grid gap-3 text-[15px] text-slate-600 md:grid-cols-2">{challenge.requirements.map((item) => <li key={item} className="flex gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3"><span className="mt-2 size-1.5 shrink-0 rounded-full bg-cyan-500" /><span>{item}</span></li>)}</ul>
+                  <section><h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.08em] text-slate-400"><ListChecks className="size-4" /> Build it in this order</h2>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">Follow these steps in your IDE. Each step tells you what to create before moving to the next part.</p>
+                    <ol className="mt-4 space-y-3">{challenge.implementationSteps.map((step, index) => <li key={`${step.title}-${index}`} className="flex gap-4 rounded-xl border border-slate-200 bg-slate-50/70 p-4"><span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#0b1b2d] font-mono text-sm font-semibold text-cyan-300">{index + 1}</span><div><h3 className="font-semibold text-slate-800">{step.title}</h3><p className="mt-1 text-sm leading-6 text-slate-600">{step.detail}</p></div></li>)}</ol>
+                  </section>
+
+                  <section className="rounded-2xl border border-slate-200 bg-white p-4"><h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.08em] text-slate-400"><CircleCheck className="size-4" /> Question-specific rules</h2>
+                    <ul className="mt-3 grid gap-x-6 gap-y-2 text-sm text-slate-600 md:grid-cols-2">{challenge.requirements.map((item) => <li key={item} className="flex gap-2"><span className="mt-2 size-1.5 shrink-0 rounded-full bg-cyan-500" /><span>{item}</span></li>)}</ul>
                   </section>
 
                   <section><div className="mb-3 flex flex-wrap items-end justify-between gap-2"><div><p className="text-sm font-semibold uppercase tracking-[0.08em] text-slate-400">Worked example</p><p className="mt-1 text-sm text-slate-500">Prompts may differ, but the values and final result should agree.</p></div><span className="font-mono text-xs text-slate-400">Target time: {challenge.duration} min</span></div>

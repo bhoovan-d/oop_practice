@@ -1,5 +1,6 @@
 import { challengeExamples } from "@/lib/challenge-examples";
 import { hardContracts } from "@/lib/hard-contracts";
+import { buildImplementationSteps, type ImplementationStep } from "@/lib/implementation-plans";
 
 export type Difficulty = "easy" | "moderate" | "hard";
 
@@ -14,6 +15,7 @@ export type Challenge = {
   principle: string;
   duration: number;
   requirements: string[];
+  implementationSteps: ImplementationStep[];
   sampleInput: string;
   sampleOutput: string;
   inputLabel: string;
@@ -243,27 +245,6 @@ export const modules: Module[] = [
   },
 ];
 
-const sharedRequirements: Record<Difficulty, string[]> = {
-  easy: [
-    "Write a complete Java program that runs from Main.",
-    "Demonstrate the normal case and at least one boundary case.",
-    "Keep input, calculation and output responsibilities clear.",
-  ],
-  moderate: [
-    "Combine this concept with at least one earlier concept.",
-    "Validate invalid input and keep state unchanged after rejection.",
-    "Separate reusable logic from the demonstration in Main.",
-    "Demonstrate at least three distinct test cases.",
-  ],
-  hard: [
-    "Choose the class and method structure yourself; no skeleton is supplied.",
-    "Combine several previously learned concepts without duplicating rules.",
-    "Preserve every object invariant when an operation fails.",
-    "Demonstrate normal, boundary and invalid cases with clear output.",
-    "Keep the solution compatible with Java 11.",
-  ],
-};
-
 function parseTask(value: string) {
   const [title, brief] = value.split("::");
   return { title, brief };
@@ -285,6 +266,13 @@ export function challengesFor(module: Module): Challenge[] {
       if (!specificRequirements) throw new Error(`Missing hard contract for ${conceptId}`);
       const usesUiActions = module.week === 9 || module.week === 10;
       const usesSystemScenario = module.week === 12 || module.week === 13;
+      const inputLabel = usesUiActions
+        ? "Sample user actions"
+        : usesSystemScenario
+          ? "Sample setup / actions"
+          : "Sample input";
+      const outputLabel = usesUiActions ? "Expected visible result" : "Expected output";
+      const brief = task.brief;
       return {
         id: `${module.id}-${conceptId}-${difficulty}`,
         moduleId: module.id,
@@ -292,18 +280,25 @@ export function challengesFor(module: Module): Challenge[] {
         concept,
         difficulty,
         title: task.title,
-        brief: `${task.brief} Implement every behaviour shown in the task checklist and use the worked example to understand the expected result.`,
+        brief,
         principle,
         duration: difficulty === "easy" ? 15 : difficulty === "moderate" ? 25 : 40,
-        requirements: [...specificRequirements, ...sharedRequirements[difficulty]],
+        requirements: specificRequirements,
+        implementationSteps: buildImplementationSteps({
+          week: module.week,
+          conceptId,
+          title: task.title,
+          brief,
+          principle,
+          difficulty,
+          taskRules: specificRequirements,
+          inputLabel,
+          outputLabel,
+        }),
         sampleInput: sample.input,
         sampleOutput: sample.output,
-        inputLabel: usesUiActions
-          ? "Sample user actions"
-          : usesSystemScenario
-            ? "Sample setup / actions"
-            : "Sample input",
-        outputLabel: usesUiActions ? "Expected visible result" : "Expected output",
+        inputLabel,
+        outputLabel,
       };
     });
   });
