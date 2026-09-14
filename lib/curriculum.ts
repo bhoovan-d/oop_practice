@@ -1,3 +1,6 @@
+import { challengeExamples } from "@/lib/challenge-examples";
+import { hardContracts } from "@/lib/hard-contracts";
+
 export type Difficulty = "easy" | "moderate" | "hard";
 
 export type Challenge = {
@@ -11,6 +14,10 @@ export type Challenge = {
   principle: string;
   duration: number;
   requirements: string[];
+  sampleInput: string;
+  sampleOutput: string;
+  inputLabel: string;
+  outputLabel: string;
 };
 
 type ConceptSeed = [
@@ -265,8 +272,19 @@ function parseTask(value: string) {
 export function challengesFor(module: Module): Challenge[] {
   return module.concepts.flatMap((seed) => {
     const [conceptId, concept, principle, easy, moderate, hard] = seed;
-    return (["easy", "moderate", "hard"] as Difficulty[]).map((difficulty) => {
+    return (["easy", "moderate", "hard"] as Difficulty[]).map((difficulty, index) => {
       const task = parseTask({ easy, moderate, hard }[difficulty]);
+      const sample = challengeExamples[conceptId]?.[index];
+      if (!sample) throw new Error(`Missing worked example for ${conceptId}/${difficulty}`);
+      const specificRequirements = difficulty === "hard"
+        ? hardContracts[conceptId]
+        : [
+            `Accept or construct the same kinds of values demonstrated in the worked example for ${task.title}.`,
+            "Produce every labelled result or state change shown in the expected output.",
+          ];
+      if (!specificRequirements) throw new Error(`Missing hard contract for ${conceptId}`);
+      const usesUiActions = module.week === 9 || module.week === 10;
+      const usesSystemScenario = module.week === 12 || module.week === 13;
       return {
         id: `${module.id}-${conceptId}-${difficulty}`,
         moduleId: module.id,
@@ -274,10 +292,18 @@ export function challengesFor(module: Module): Challenge[] {
         concept,
         difficulty,
         title: task.title,
-        brief: task.brief,
+        brief: `${task.brief} Implement every behaviour shown in the task checklist and use the worked example to understand the expected result.`,
         principle,
         duration: difficulty === "easy" ? 15 : difficulty === "moderate" ? 25 : 40,
-        requirements: sharedRequirements[difficulty],
+        requirements: [...specificRequirements, ...sharedRequirements[difficulty]],
+        sampleInput: sample.input,
+        sampleOutput: sample.output,
+        inputLabel: usesUiActions
+          ? "Sample user actions"
+          : usesSystemScenario
+            ? "Sample setup / actions"
+            : "Sample input",
+        outputLabel: usesUiActions ? "Expected visible result" : "Expected output",
       };
     });
   });
