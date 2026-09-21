@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import {
@@ -39,16 +40,6 @@ function sourceLabel(source: (typeof modules)[number]["source"]) {
   if (source === "sample-calibrated") return "Lab-sheet grounded";
   if (source === "course-confirmed") return "Course confirmed";
   return "Syllabus derived";
-}
-
-function approachFor(week: number) {
-  if (week <= 2) return "Separate input, calculation and output. Reproduce the sample first, then test every boundary named in the checklist.";
-  if (week <= 5) return "List the objects, decide which object owns each rule, and let Main only create the scenario and print the result.";
-  if (week <= 8) return "Choose the structure or functional interface from the operations required. Test empty, single-value, duplicate and malformed cases.";
-  if (week <= 10) return "Keep application state outside AWT controls. Let an event handler call one model operation and then refresh the interface.";
-  if (week === 11) return "Throw failures where a rule breaks and catch them where recovery is possible. Failed operations must leave state unchanged.";
-  if (week === 12) return "Define resource ownership and shared-state rules before coding. Make cleanup and completion deterministic.";
-  return "Put changing behaviour behind a small interface and keep the stable workflow independent of concrete implementations.";
 }
 
 export default function Home() {
@@ -169,11 +160,19 @@ export default function Home() {
     chooseModule(modules[(modules.findIndex((item) => item.id === activeModule.id) + 1) % modules.length].id);
   }
   async function copyQuestion() {
+    const spec = challenge.spec;
     await navigator.clipboard.writeText([
-      `${challenge.title} (${challenge.difficulty})`, `Topic: ${challenge.concept}`, "", challenge.brief, "", "Requirements:",
-      ...challenge.requirements.map((item) => `- ${item}`), "", `${challenge.inputLabel}:`, challenge.sampleInput,
-      "", "Implementation steps:", ...challenge.implementationSteps.map((step, index) => `${index + 1}. ${step.title}: ${step.detail}`),
-      "", `${challenge.outputLabel}:`, challenge.sampleOutput,
+      `${challenge.title} (${challenge.difficulty})`, `Topic: ${challenge.concept}`, "", "OBJECTIVE", spec.objective,
+      "", "PROBLEM STATEMENT", ...spec.problemStatement, "", "REQUIRED FILES", ...spec.requiredFiles.map((item) => `- ${item}`),
+      "", "TYPE CONTRACTS", ...spec.contracts.flatMap((contract) => [
+        `${contract.kind.toUpperCase()}: ${contract.name}`, contract.purpose,
+        "Fields:", ...contract.fields.map((item) => `- ${item}`), "Constructors:", ...contract.constructors.map((item) => `- ${item}`),
+        "Methods:", ...contract.methods.map((item) => `- ${item}`), `Collaboration: ${contract.collaboration}`, "",
+      ]),
+      "PROGRAM FLOW", ...spec.programFlow.map((item, index) => `${index + 1}. ${item}`), "", "RULES AND VALIDATION", ...spec.rules.map((item) => `- ${item}`),
+      "", "INPUT FORMAT", ...spec.inputFormat.map((item) => `- ${item}`), "", `${challenge.inputLabel.toUpperCase()}`, challenge.sampleInput,
+      "", "OUTPUT FORMAT", ...spec.outputFormat.map((item) => `- ${item}`), "", `${challenge.outputLabel.toUpperCase()}`, challenge.sampleOutput,
+      "", "COMPLETION TESTS", ...spec.completionTests.map((item) => `- ${item}`),
     ].join("\n"));
     setCopied(true); window.setTimeout(() => setCopied(false), 1800);
   }
@@ -253,22 +252,33 @@ export default function Home() {
                 </div>
 
                 <div className="space-y-7 p-5 md:p-7">
-                  {mode === "learn" ? <div className="flex items-start gap-3 rounded-xl border border-cyan-100 bg-cyan-50/70 p-4"><Sparkles className="mt-0.5 size-4 shrink-0 text-cyan-700" /><div><p className="text-sm font-semibold text-cyan-950">Concept to practise</p><p className="mt-1 text-sm leading-6 text-cyan-900/70">{challenge.principle}</p></div></div> : <div className="flex items-start gap-3 rounded-xl border border-orange-100 bg-orange-50 p-4"><Clock3 className="mt-0.5 size-4 shrink-0 text-orange-700" /><div><p className="text-sm font-semibold text-orange-950">Exam attempt</p><p className="mt-1 text-sm leading-6 text-orange-900/70">Work in your own IDE without hints. Return here when finished and paste your solution below.</p></div></div>}
+                  {mode === "learn" ? <div className="flex items-start gap-3 rounded-xl border border-cyan-100 bg-cyan-50/70 p-4"><Sparkles className="mt-0.5 size-4 shrink-0 text-cyan-700" /><div><p className="text-sm font-semibold text-cyan-950">Objective</p><p className="mt-1 text-sm leading-6 text-cyan-900/75">{challenge.spec.objective}</p></div></div> : <div className="flex items-start gap-3 rounded-xl border border-orange-100 bg-orange-50 p-4"><Clock3 className="mt-0.5 size-4 shrink-0 text-orange-700" /><div><p className="text-sm font-semibold text-orange-950">Exam attempt</p><p className="mt-1 text-sm leading-6 text-orange-900/70">The complete contract remains visible. Work in your own IDE without opening the hints, then return here to save your solution.</p></div></div>}
 
-                  <section><h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.08em] text-slate-400"><ListChecks className="size-4" /> Build it in this order</h2>
-                    <p className="mt-2 text-sm leading-6 text-slate-500">Follow these steps in your IDE. Each step tells you what to create before moving to the next part.</p>
-                    <ol className="mt-4 space-y-3">{challenge.implementationSteps.map((step, index) => <li key={`${step.title}-${index}`} className="flex gap-4 rounded-xl border border-slate-200 bg-slate-50/70 p-4"><span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#0b1b2d] font-mono text-sm font-semibold text-cyan-300">{index + 1}</span><div><h3 className="font-semibold text-slate-800">{step.title}</h3><p className="mt-1 text-sm leading-6 text-slate-600">{step.detail}</p></div></li>)}</ol>
+                  <section><h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.08em] text-slate-400"><BookOpen className="size-4" /> Problem statement</h2>
+                    <div className="mt-4 space-y-4 text-[15px] leading-7 text-slate-650">{challenge.spec.problemStatement.map((paragraph, index) => <p key={index}>{paragraph}</p>)}</div>
                   </section>
 
-                  <section className="rounded-2xl border border-slate-200 bg-white p-4"><h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.08em] text-slate-400"><CircleCheck className="size-4" /> Question-specific rules</h2>
-                    <ul className="mt-3 grid gap-x-6 gap-y-2 text-sm text-slate-600 md:grid-cols-2">{challenge.requirements.map((item) => <li key={item} className="flex gap-2"><span className="mt-2 size-1.5 shrink-0 rounded-full bg-cyan-500" /><span>{item}</span></li>)}</ul>
+                  <section><div className="flex flex-wrap items-end justify-between gap-3"><div><h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.08em] text-slate-400"><Braces className="size-4" /> Required files and type contracts</h2><p className="mt-2 text-sm leading-6 text-slate-500">Create these files and public signatures first. The method bodies are the part you must solve.</p></div><div className="flex flex-wrap gap-2">{challenge.spec.requiredFiles.map((file) => <code key={file} className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-600">{file}</code>)}</div></div>
+                    <div className="mt-4 space-y-4">{challenge.spec.contracts.map((contract) => <article key={contract.name} className="overflow-hidden rounded-2xl border border-slate-200"><div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50 px-4 py-3"><h3 className="font-semibold text-slate-900">{contract.name}</h3><Badge variant="outline" className="bg-white font-mono text-[10px] uppercase text-slate-500">{contract.kind}</Badge></div><div className="space-y-5 p-4"><p className="text-sm leading-6 text-slate-600">{contract.purpose}</p><div className="grid gap-5 lg:grid-cols-3"><div><h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Fields</h4><ul className="mt-2 space-y-2">{contract.fields.map((item) => <li key={item}><code className="block rounded-lg bg-[#07111f] px-3 py-2 text-xs leading-5 text-cyan-100">{item}</code></li>)}</ul></div><div><h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Constructors</h4><ul className="mt-2 space-y-2">{contract.constructors.map((item) => <li key={item}><code className="block rounded-lg bg-[#07111f] px-3 py-2 text-xs leading-5 text-cyan-100">{item}</code></li>)}</ul></div><div><h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Required methods</h4><ul className="mt-2 space-y-2">{contract.methods.map((item) => <li key={item}><code className="block rounded-lg bg-[#07111f] px-3 py-2 text-xs leading-5 text-cyan-100">{item}</code></li>)}</ul></div></div><p className="rounded-xl border border-indigo-100 bg-indigo-50/60 px-3 py-2 text-sm leading-6 text-indigo-950/75"><strong>How it collaborates:</strong> {contract.collaboration}</p></div></article>)}</div>
                   </section>
 
-                  <section><div className="mb-3 flex flex-wrap items-end justify-between gap-2"><div><p className="text-sm font-semibold uppercase tracking-[0.08em] text-slate-400">Worked example</p><p className="mt-1 text-sm text-slate-500">Prompts may differ, but the values and final result should agree.</p></div><span className="font-mono text-xs text-slate-400">Target time: {challenge.duration} min</span></div>
+                  <section><h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.08em] text-slate-400"><ListChecks className="size-4" /> Program flow</h2>
+                    <ol className="mt-4 space-y-3">{challenge.spec.programFlow.map((item, index) => <li key={item} className="flex gap-4 rounded-xl border border-slate-200 bg-slate-50/70 p-4"><span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#0b1b2d] font-mono text-sm font-semibold text-cyan-300">{index + 1}</span><p className="pt-1 text-sm leading-6 text-slate-600">{item}</p></li>)}</ol>
+                  </section>
+
+                  <section className="rounded-2xl border border-slate-200 bg-slate-50/60 p-5"><h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.08em] text-slate-400"><CircleCheck className="size-4" /> Rules and validation</h2>
+                    <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-600">{challenge.spec.rules.map((item) => <li key={item} className="flex gap-3"><span className="mt-2.5 size-1.5 shrink-0 rounded-full bg-cyan-500" /><span>{item}</span></li>)}</ul>
+                  </section>
+
+                  <section><h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-slate-400">Input and output contract</h2><div className="mt-4 grid gap-4 lg:grid-cols-2"><div className="rounded-xl border border-slate-200 p-4"><h3 className="font-semibold text-slate-800">Input format</h3><ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600">{challenge.spec.inputFormat.map((item) => <li key={item} className="flex gap-2"><span className="mt-2.5 size-1.5 shrink-0 rounded-full bg-cyan-500" /><span>{item}</span></li>)}</ul></div><div className="rounded-xl border border-slate-200 p-4"><h3 className="font-semibold text-slate-800">Output format</h3><ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600">{challenge.spec.outputFormat.map((item) => <li key={item} className="flex gap-2"><span className="mt-2.5 size-1.5 shrink-0 rounded-full bg-emerald-500" /><span>{item}</span></li>)}</ul></div></div></section>
+
+                  <section><div className="mb-3 flex flex-wrap items-end justify-between gap-2"><div><p className="text-sm font-semibold uppercase tracking-[0.08em] text-slate-400">Worked example</p><p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">{challenge.spec.exampleExplanation}</p></div><span className="font-mono text-xs text-slate-400">Target time: {challenge.duration} min</span></div>
                     <div className="grid overflow-hidden rounded-2xl border border-slate-800 bg-[#07111f] text-slate-100 lg:grid-cols-2"><div className="border-b border-white/10 lg:border-b-0 lg:border-r"><div className="border-b border-white/10 px-4 py-3 font-mono text-[11px] uppercase tracking-wider text-cyan-300">{challenge.inputLabel}</div><pre className="min-h-36 overflow-auto whitespace-pre-wrap p-5 font-mono text-sm leading-6 text-slate-300">{challenge.sampleInput}</pre></div><div><div className="border-b border-white/10 px-4 py-3 font-mono text-[11px] uppercase tracking-wider text-emerald-300">{challenge.outputLabel}</div><pre className="min-h-36 overflow-auto whitespace-pre-wrap p-5 font-mono text-sm leading-6 text-slate-300">{challenge.sampleOutput}</pre></div></div>
                   </section>
 
-                  {mode === "learn" && <section className="space-y-3"><Button variant="outline" className="w-full justify-between border-amber-200 bg-amber-50 text-amber-950 hover:bg-amber-100" onClick={() => setHintCount((value) => Math.min(3, value + 1))}><span className="flex items-center gap-2"><Lightbulb className="size-4 text-amber-600" /> Reveal hint {Math.min(3, hintCount + 1)} of 3</span><ChevronRight className="size-4" /></Button>{hintCount >= 1 && <p className="rounded-xl border border-amber-100 bg-amber-50/40 px-4 py-3 text-sm leading-6 text-slate-600"><strong>Hint 1:</strong> {challenge.principle}</p>}{hintCount >= 2 && <p className="rounded-xl border border-amber-100 bg-amber-50/40 px-4 py-3 text-sm leading-6 text-slate-600"><strong>Hint 2:</strong> {approachFor(activeModule.week)}</p>}{hintCount >= 3 && <p className="rounded-xl border border-amber-100 bg-amber-50/40 px-4 py-3 text-sm leading-6 text-slate-600"><strong>Hint 3:</strong> Reproduce the worked example first, then add one normal, one boundary and one invalid test.</p>}</section>}
+                  <section><h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.08em] text-slate-400"><Target className="size-4" /> Completion tests</h2><div className="mt-4 grid gap-3 md:grid-cols-2">{challenge.spec.completionTests.map((item, index) => <div key={item} className="rounded-xl border border-slate-200 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Test {index + 1}</p><p className="mt-2 text-sm leading-6 text-slate-600">{item}</p></div>)}</div></section>
+
+                  {mode === "learn" && <section className="space-y-3"><Button variant="outline" className="w-full justify-between border-amber-200 bg-amber-50 text-amber-950 hover:bg-amber-100" onClick={() => setHintCount((value) => Math.min(3, value + 1))}><span className="flex items-center gap-2"><Lightbulb className="size-4 text-amber-600" /> Reveal hint {Math.min(3, hintCount + 1)} of 3</span><ChevronRight className="size-4" /></Button>{challenge.spec.hints.slice(0, hintCount).map((hint, index) => <p key={hint} className="rounded-xl border border-amber-100 bg-amber-50/40 px-4 py-3 text-sm leading-6 text-slate-600"><strong>Hint {index + 1}:</strong> {hint}</p>)}</section>}
                 </div>
               </article>
 

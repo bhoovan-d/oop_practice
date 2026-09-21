@@ -1,6 +1,6 @@
 import { challengeExamples } from "@/lib/challenge-examples";
 import { hardContracts } from "@/lib/hard-contracts";
-import { buildImplementationSteps, type ImplementationStep } from "@/lib/implementation-plans";
+import { buildChallengeSpec, validateChallengeSpecs, type ChallengeSpec } from "@/lib/question-specs";
 
 export type Difficulty = "easy" | "moderate" | "hard";
 
@@ -14,8 +14,7 @@ export type Challenge = {
   brief: string;
   principle: string;
   duration: number;
-  requirements: string[];
-  implementationSteps: ImplementationStep[];
+  spec: ChallengeSpec;
   sampleInput: string;
   sampleOutput: string;
   inputLabel: string;
@@ -260,8 +259,9 @@ export function challengesFor(module: Module): Challenge[] {
       const specificRequirements = difficulty === "hard"
         ? hardContracts[conceptId]
         : [
-            `Accept or construct the same kinds of values demonstrated in the worked example for ${task.title}.`,
-            "Produce every labelled result or state change shown in the expected output.",
+            task.brief,
+            "Read every value in the documented Input format and calculate the result from those values; do not embed the worked-example values in the program.",
+            "Print every label and result defined by the Output format in the stated order.",
           ];
       if (!specificRequirements) throw new Error(`Missing hard contract for ${conceptId}`);
       const usesUiActions = module.week === 9 || module.week === 10;
@@ -283,17 +283,19 @@ export function challengesFor(module: Module): Challenge[] {
         brief,
         principle,
         duration: difficulty === "easy" ? 15 : difficulty === "moderate" ? 25 : 40,
-        requirements: specificRequirements,
-        implementationSteps: buildImplementationSteps({
+        spec: buildChallengeSpec({
           week: module.week,
           conceptId,
+          concept,
           title: task.title,
           brief,
           principle,
           difficulty,
-          taskRules: specificRequirements,
+          rules: specificRequirements,
           inputLabel,
           outputLabel,
+          sampleInput: sample.input,
+          sampleOutput: sample.output,
         }),
         sampleInput: sample.input,
         sampleOutput: sample.output,
@@ -305,6 +307,7 @@ export function challengesFor(module: Module): Challenge[] {
 }
 
 export const allChallenges = modules.flatMap(challengesFor);
+validateChallengeSpecs(allChallenges);
 
 export function starterFor(difficulty: Difficulty) {
   if (difficulty === "hard") return "";
