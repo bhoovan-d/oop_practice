@@ -9,6 +9,12 @@ export type JavaTypeContract = {
 };
 
 export type ChallengeSpec = {
+  taskParagraphs: [string] | [string, string];
+  exampleExplanation: string;
+  hints: [string, string, string];
+};
+
+type DetailedChallengeSpec = ChallengeSpec & {
   objective: string;
   problemStatement: string[];
   requiredFiles: string[];
@@ -17,9 +23,7 @@ export type ChallengeSpec = {
   rules: string[];
   inputFormat: string[];
   outputFormat: string[];
-  exampleExplanation: string;
   completionTests: string[];
-  hints: [string, string, string];
 };
 
 type SpecContext = {
@@ -394,7 +398,22 @@ export function buildChallengeSpec(context: SpecContext): ChallengeSpec {
   const requiredFiles = contracts.map((item) => `${item.name}.java`);
   const firstRule = context.rules[0] ?? context.brief;
   const secondRule = context.rules[1] ?? context.principle;
-  const spec: ChallengeSpec = {
+  const domainContracts = contracts.filter((item) => item.name !== "Main");
+  const domainNames = domainContracts.map((item) => item.name);
+  const readableNames = domainNames.length <= 1
+    ? domainNames.join("")
+    : `${domainNames.slice(0, -1).join(", ")} and ${domainNames.at(-1)}`;
+  const classSummary = domainContracts.length
+    ? `Create ${readableNames} as ${domainNames.length === 1 ? "a separate Java type" : "separate Java types"}. Keep each type responsible for its own data and behaviour, and use Main only to read input, connect the objects and print the result.`
+    : "Write the solution in Main and move repeated calculation or validation into small static helper methods.";
+  const conciseRules = context.difficulty === "hard"
+    ? context.rules.filter((rule) => rule !== context.brief).join(" ")
+    : "";
+  const spec: DetailedChallengeSpec = {
+    taskParagraphs: [
+      `${context.brief} Follow the sample format for the input or actions and the resulting output, and make the program work with other valid values instead of hard-coding the example.`,
+      `${classSummary} ${conciseRules}`.trim(),
+    ],
     objective: `Practise ${context.concept.toLowerCase()} by completing ${context.title}. ${context.principle}`,
     problemStatement: [
       `${context.brief} The finished program must solve the complete scenario for any input that follows the format below, rather than reproducing only the worked example.`,
@@ -407,7 +426,7 @@ export function buildChallengeSpec(context: SpecContext): ChallengeSpec {
     rules: context.rules,
     inputFormat: describeInput(context),
     outputFormat: describeOutput(context),
-    exampleExplanation: `The sample follows the stated input order, applies the rules for ${context.title}, and then prints the resulting values or object state. Use it to verify formatting; your implementation must also handle the completion tests below.`,
+    exampleExplanation: `The sample follows the stated input order, applies the rules for ${context.title}, and then prints the resulting values or object state. Use it to understand the required formatting, but make sure your program also works with other valid values.`,
     completionTests: [
       "Worked example: reproduce the supplied output from the supplied input.",
       context.difficulty === "easy" ? "Boundary case: use zero, an empty value, or the smallest allowed value named by the contract." : "Boundary case: test the smallest and largest accepted values or capacity limits described by the contract.",
@@ -421,6 +440,10 @@ export function buildChallengeSpec(context: SpecContext): ChallengeSpec {
     ],
   };
   if (context.conceptId === "class-basics" && context.difficulty === "hard") {
+    spec.taskParagraphs = [
+      "Create a console-based parking-lot program. The first input value is the lot capacity, followed by that many vehicle records containing a type and unique registration. Process ENTER and EXIT commands until the input ends. ENTER parks a registered vehicle and issues the next ticket number; EXIT removes a parked vehicle and prints its stay, fee, and the remaining occupancy.",
+      "Create Vehicle to store the type and registration, ParkingTicket to store the vehicle, ticket number and arrival time, and ParkingLot to manage capacity and active tickets. Reject unknown vehicles, duplicate entries, entries when full, missing tickets, malformed times, and exits before arrival without changing stored state. Charge 20.00 for every started 30-minute period; a zero-minute stay costs 0.00.",
+    ];
     spec.objective = "Practise class fundamentals by building a parking system in which Vehicle, ParkingTicket and ParkingLot objects collaborate without exposing or duplicating their state.";
     spec.problemStatement = [
       "A small parking lot needs a console program that records vehicles entering and leaving. The lot is created with a fixed positive capacity. Before commands begin, the program reads the vehicles that may be referenced by later ENTER commands; every vehicle has a type and a unique registration number.",
@@ -468,7 +491,11 @@ export function buildChallengeSpec(context: SpecContext): ChallengeSpec {
       "In enter and exit, finish every validation before calling put, remove or incrementing nextTicketNumber.",
     ];
   }
-  return spec;
+  return {
+    taskParagraphs: spec.taskParagraphs,
+    exampleExplanation: spec.exampleExplanation,
+    hints: spec.hints,
+  };
 }
 
 export function validateChallengeSpecs(challenges: Array<{ id: string; spec: ChallengeSpec }>) {
@@ -477,7 +504,7 @@ export function validateChallengeSpecs(challenges: Array<{ id: string; spec: Cha
   if (ids.size !== challenges.length) throw new Error("Challenge IDs must be unique.");
   for (const challenge of challenges) {
     const spec = challenge.spec;
-    if (!spec.objective || spec.problemStatement.length < 2 || spec.contracts.length === 0 || spec.programFlow.length === 0 || spec.rules.length === 0 || spec.inputFormat.length === 0 || spec.outputFormat.length === 0 || spec.completionTests.length < 3 || spec.hints.some((hint) => !hint)) {
+    if (spec.taskParagraphs.length < 1 || spec.taskParagraphs.length > 2 || spec.taskParagraphs.some((paragraph) => !paragraph.trim()) || !spec.exampleExplanation.trim() || spec.hints.some((hint) => !hint.trim())) {
       throw new Error(`Incomplete question specification: ${challenge.id}`);
     }
   }
